@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const cors = require('cors'); // Import the cors package
 
 const User = require("./models/User");
+const { default: mongoose } = require('mongoose');
 
 const app = express();
 const port = 3003;
@@ -14,9 +15,17 @@ app.use(bodyParser.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cors());
 
-// connecting with mongo db - syed
-// const DB_URL="mongodb+srv://syed_abdulrab:syedabdulrab@cluster0.nt7qb.mongodb.net/auth-service-cloud?retryWrites=true&w=majority"
-// dbConnect(DB_URL);
+const DB_URL="mongodb+srv://syed_abdulrab:syedabdulrab@cluster0.nt7qb.mongodb.net/cloud_auth_svc?retryWrites=true&w=majority"
+// Connect to MongoDB
+
+mongoose.connect(DB_URL);
+
+// Check if the connection was successful
+const db = mongoose.connection;
+db.on('error', console.error.bind(console, 'MongoDB connection error:'));
+db.once('open', () => {
+  console.log('Connected to MongoDB');
+});
 
 // Secret key for JWT
 const secretKey = 'your-secret-key';
@@ -51,6 +60,7 @@ const isTokenBlacklisted = (req, res, next) => {
   next();
 };
 
+// ======================= ENDPOINTS ================== //
 // Signup endpoint
 app.post('/signup', async (req, res) => {
   console.log(req.body);
@@ -96,6 +106,62 @@ app.post('/logout', validateTokenMiddleware, (req, res) => {
   blacklistedTokens.add(token);
   
   res.json({ message: 'Logout successful' });
+});
+
+app.post('/updateQuotas/:userId', async (req, res) => {
+  try {
+
+    console.log("REQ BODY IN AUTH SVC",req.body);
+    const userId = req.params.userId;
+    const { amount, type } = req.body;
+
+    if (!amount || !type) {
+      return res.status(400).json({ message: 'Invalid request body' });
+    }
+
+    // Fetch the user by ID
+    const user = await User.findById(userId);
+    console.log(user,userId,amount,type);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Check if the update will exceed quotas
+    if ((user.bandwidthQuota + amount/100000) > 25 || (user.storageQuota + amount/100000) > 10) {
+      return res.status(400).json({ message: 'quota exceeded, chutti karo' });
+    }
+
+    // Update quotas based on the type (upload or delete)
+    if (type === 'upload') {
+      user.bandwidthQuota += amount/100000;
+      user.storageQuota += amount/100000;
+    } else if (type === 'delete') {
+      user.bandwidthQuota += amount/100000;
+      user.storageQuota -= amount/100000;
+    } else {
+      return res.status(400).json({ message: 'Invalid operation type' });
+    }
+
+    // Save the updated user
+    await user.save();
+
+    res.status(200).json({ message: 'User quotas updated successfully' });
+  } catch (error) {
+    console.error('Error updating user quotas:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+app.get('/users', async (req, res) => {
+  try {
+    const users = await User.find({}, { password: 0 }); // Exclude the password field from the response
+
+    res.status(200).json(users);
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
 });
 
 app.get(
