@@ -1,17 +1,19 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const jwt = require('jsonwebtoken');
+const cors = require('cors'); // Import the cors package
 
 const User = require("./models/User");
 const { default: dbConnect } = require('./db/db');
 
 const app = express();
-const port = 3000;
+const port = 4000;
 
 // Middleware to parse JSON in requests
 app.use(express.json());
 app.use(bodyParser.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cors());
 
 // connecting with mongo db - syed
 // const DB_URL="mongodb+srv://syed_abdulrab:syedabdulrab@cluster0.nt7qb.mongodb.net/auth-service-cloud?retryWrites=true&w=majority"
@@ -99,7 +101,6 @@ app.get('/validate_token', validateTokenMiddleware, isTokenBlacklisted, (req, re
   // If the middleware succeeds, the token is valid & IS NOT BLACKLISTED, and req.userId is available
   res.json({ message: 'Token is valid', userId: req.userId });
 });
-
 
 
 
