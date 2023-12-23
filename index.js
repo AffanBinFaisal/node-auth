@@ -7,7 +7,7 @@ const User = require("./models/User");
 const { default: dbConnect } = require('./db/db');
 
 const app = express();
-const port = 4000;
+const port = 3003;
 
 // Middleware to parse JSON in requests
 app.use(express.json());
