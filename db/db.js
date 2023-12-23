@@ -1,7 +1,8 @@
 const mongoose = require("mongoose");
 
 // Connection URI
-const uri = 'mongodb://127.0.0.1:27017/auth-micro-service';
+
+// Add to envs later 
 const DB_URL="mongodb+srv://syed_abdulrab:syedabdulrab@cluster0.nt7qb.mongodb.net/cloud_auth_svc?retryWrites=true&w=majority"
 // Connect to MongoDB
 

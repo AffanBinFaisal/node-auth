@@ -75,8 +75,28 @@ const validateTokenMiddleware = (req, res, next) => {
   });
 };
 
-app.get('/validate_token', validateTokenMiddleware, (req, res) => {
-  // If the middleware succeeds, the token is valid, and req.userId is available
+app.post('/logout', validateTokenMiddleware, (req, res) => {
+  const token = req.headers.authorization;
+
+  // Add the token to the blacklist
+  blacklistedTokens.add(token);
+
+  res.json({ message: 'Logout successful' });
+});
+
+// Middleware to check if the token is blacklisted
+const isTokenBlacklisted = (req, res, next) => {
+  const token = req.headers.authorization;
+
+  if (blacklistedTokens.has(token)) {
+    return res.status(401).json({ message: 'Token has been blacklisted' });
+  }
+
+  next();
+};
+
+app.get('/validate_token', validateTokenMiddleware, isTokenBlacklisted, (req, res) => {
+  // If the middleware succeeds, the token is valid & IS NOT BLACKLISTED, and req.userId is available
   res.json({ message: 'Token is valid', userId: req.userId });
 });
 
