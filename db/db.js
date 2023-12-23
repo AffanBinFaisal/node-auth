@@ -6,7 +6,7 @@ const mongoose = require("mongoose");
 const DB_URL="mongodb+srv://syed_abdulrab:syedabdulrab@cluster0.nt7qb.mongodb.net/cloud_auth_svc?retryWrites=true&w=majority"
 // Connect to MongoDB
 
-mongoose.connect(uri);
+mongoose.connect(DB_URL);
 
 // Check if the connection was successful
 const db = mongoose.connection;
