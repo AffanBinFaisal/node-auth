@@ -23,6 +23,35 @@ app.use(cors());
 const secretKey = 'your-secret-key';
 const blacklistedTokens = new Set();
 
+// ======================= MIDDLEWARES ===============================
+const validateTokenMiddleware = (req, res, next) => {
+  const token = req.headers.authorization;
+
+  if (!token) {
+    return res.status(401).json({ message: "Authorization header is missing" });
+  }
+
+  jwt.verify(token, secretKey, (err, decoded) => {
+    if (err) {
+      return res.status(401).json({ message: "Invalid token" });
+    }
+
+    req.userId = decoded.userId;
+    next();
+  });
+};
+
+// Middleware to check if the token is blacklisted
+const isTokenBlacklisted = (req, res, next) => {
+  const token = req.headers.authorization;
+
+  if (blacklistedTokens.has(token)) {
+    return res.status(401).json({ message: 'Token has been blacklisted' });
+  }
+
+  next();
+};
+
 // Signup endpoint
 app.post('/signup', async (req, res) => {
   console.log(req.body);
@@ -80,34 +109,6 @@ app.get(
   }
 );
 
-// ======================= MIDDLEWARES ===============================
-const validateTokenMiddleware = (req, res, next) => {
-  const token = req.headers.authorization;
-
-  if (!token) {
-    return res.status(401).json({ message: "Authorization header is missing" });
-  }
-
-  jwt.verify(token, secretKey, (err, decoded) => {
-    if (err) {
-      return res.status(401).json({ message: "Invalid token" });
-    }
-
-    req.userId = decoded.userId;
-    next();
-  });
-};
-
-// Middleware to check if the token is blacklisted
-const isTokenBlacklisted = (req, res, next) => {
-  const token = req.headers.authorization;
-
-  if (blacklistedTokens.has(token)) {
-    return res.status(401).json({ message: 'Token has been blacklisted' });
-  }
-
-  next();
-};
 
 // ===================================== RUN THE SERVER ===================================
 app.listen(port, () => {
