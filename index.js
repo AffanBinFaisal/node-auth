@@ -1,16 +1,18 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const jwt = require('jsonwebtoken');
+const cors = require('cors'); // Import the cors package
 
 const User = require("./models/User");
 
 const app = express();
-const port = 3000;
+const port = 3003;
 
 // Middleware to parse JSON in requests
 app.use(express.json());
 app.use(bodyParser.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cors());
 
 // connecting with mongo db - syed
 // const DB_URL="mongodb+srv://syed_abdulrab:syedabdulrab@cluster0.nt7qb.mongodb.net/auth-service-cloud?retryWrites=true&w=majority"
@@ -18,6 +20,36 @@ app.use(express.urlencoded({ extended: true }));
 
 // Secret key for JWT
 const secretKey = 'your-secret-key';
+const blacklistedTokens = new Set();
+
+// ======================= MIDDLEWARES ===============================
+const validateTokenMiddleware = (req, res, next) => {
+  const token = req.headers.authorization;
+
+  if (!token) {
+    return res.status(401).json({ message: "Authorization header is missing" });
+  }
+
+  jwt.verify(token, secretKey, (err, decoded) => {
+    if (err) {
+      return res.status(401).json({ message: "Invalid token" });
+    }
+
+    req.userId = decoded.userId;
+    next();
+  });
+};
+
+// Middleware to check if the token is blacklisted
+const isTokenBlacklisted = (req, res, next) => {
+  const token = req.headers.authorization;
+
+  if (blacklistedTokens.has(token)) {
+    return res.status(401).json({ message: 'Token has been blacklisted' });
+  }
+
+  next();
+};
 
 // Signup endpoint
 app.post('/signup', async (req, res) => {
@@ -57,95 +89,27 @@ app.post('/login', async (req, res) => {
   }
 });
 
-const validateTokenMiddleware = (req, res, next) => {
-  const token = req.headers.authorization;
-
-  if (!token) {
-    return res.status(401).json({ message: 'Authorization header is missing' });
-  }
-
-  jwt.verify(token, secretKey, (err, decoded) => {
-    if (err) {
-      return res.status(401).json({ message: 'Invalid token' });
-    }
-
-    req.userId = decoded.userId;
-    next();
-  });
-};
-
 app.post('/logout', validateTokenMiddleware, (req, res) => {
   const token = req.headers.authorization;
-
+  
   // Add the token to the blacklist
   blacklistedTokens.add(token);
-
+  
   res.json({ message: 'Logout successful' });
 });
 
-// Middleware to check if the token is blacklisted
-const isTokenBlacklisted = (req, res, next) => {
-  const token = req.headers.authorization;
-
-  if (blacklistedTokens.has(token)) {
-    return res.status(401).json({ message: 'Token has been blacklisted' });
+app.get(
+  "/validate_token",
+  validateTokenMiddleware,
+  isTokenBlacklisted,
+  (req, res) => {
+    // If the middleware succeeds, the token is valid & IS NOT BLACKLISTED, and req.userId is available
+    res.json({ message: "Token is valid", userId: req.userId });
   }
-
-  next();
-};
-
-app.get('/validate_token', validateTokenMiddleware, isTokenBlacklisted, (req, res) => {
-  // If the middleware succeeds, the token is valid & IS NOT BLACKLISTED, and req.userId is available
-  res.json({ message: 'Token is valid', userId: req.userId });
-});
+);
 
 
-
-app.post('/updateQuotas/:userId', async (req, res) => {
-  try {
-    const userId = req.params.userId;
-    const { amount, type } = req.body;
-
-    // Fetch the user by ID
-    const user = await User.findById(userId);
-
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    // Check if the update will exceed quotas
-    if ((user.bandwidthQuota + amount) > 25 || (user.storageQuota + amount) > 10) {
-      return res.status(400).json({ message: 'Storage quota exceeded' });
-    }
-
-    // Update quotas based on the type (upload or delete)
-    if (type === 'upload') {
-      user.bandwidthQuota += amount;
-      user.storageQuota += amount;
-    } else if (type === 'delete') {
-      user.bandwidthQuota -= amount;
-      user.storageQuota += amount;
-    } else {
-      return res.status(400).json({ message: 'Invalid operation type' });
-    }
-
-    // Save the updated user
-    await user.save();
-
-    res.status(200).json({ message: 'User quotas updated successfully' });
-  } catch (error) {
-    console.error('Error updating user quotas:', error);
-    res.status(500).json({ message: 'Internal server error' });
-  }
-});
-
-
-module.exports = router;
-
-
-
-
-
+// ===================================== RUN THE SERVER ===================================
 app.listen(port, () => {
   console.log(`AUTH SERVC Server is running on http://localhost:${port}`);
 });
