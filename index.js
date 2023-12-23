@@ -21,6 +21,7 @@ app.use(cors());
 
 // Secret key for JWT
 const secretKey = 'your-secret-key';
+const blacklistedTokens = new Set();
 
 // Signup endpoint
 app.post('/signup', async (req, res) => {
@@ -60,31 +61,42 @@ app.post('/login', async (req, res) => {
   }
 });
 
+app.post('/logout', validateTokenMiddleware, (req, res) => {
+  const token = req.headers.authorization;
+  
+  // Add the token to the blacklist
+  blacklistedTokens.add(token);
+  
+  res.json({ message: 'Logout successful' });
+});
+
+app.get(
+  "/validate_token",
+  validateTokenMiddleware,
+  isTokenBlacklisted,
+  (req, res) => {
+    // If the middleware succeeds, the token is valid & IS NOT BLACKLISTED, and req.userId is available
+    res.json({ message: "Token is valid", userId: req.userId });
+  }
+);
+
+// ======================= MIDDLEWARES ===============================
 const validateTokenMiddleware = (req, res, next) => {
   const token = req.headers.authorization;
 
   if (!token) {
-    return res.status(401).json({ message: 'Authorization header is missing' });
+    return res.status(401).json({ message: "Authorization header is missing" });
   }
 
   jwt.verify(token, secretKey, (err, decoded) => {
     if (err) {
-      return res.status(401).json({ message: 'Invalid token' });
+      return res.status(401).json({ message: "Invalid token" });
     }
 
     req.userId = decoded.userId;
     next();
   });
 };
-
-app.post('/logout', validateTokenMiddleware, (req, res) => {
-  const token = req.headers.authorization;
-
-  // Add the token to the blacklist
-  blacklistedTokens.add(token);
-
-  res.json({ message: 'Logout successful' });
-});
 
 // Middleware to check if the token is blacklisted
 const isTokenBlacklisted = (req, res, next) => {
@@ -97,14 +109,7 @@ const isTokenBlacklisted = (req, res, next) => {
   next();
 };
 
-app.get('/validate_token', validateTokenMiddleware, isTokenBlacklisted, (req, res) => {
-  // If the middleware succeeds, the token is valid & IS NOT BLACKLISTED, and req.userId is available
-  res.json({ message: 'Token is valid', userId: req.userId });
-});
-
-
-
-
+// ===================================== RUN THE SERVER ===================================
 app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);
 });
