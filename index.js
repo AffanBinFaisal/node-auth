@@ -3,6 +3,7 @@ const bodyParser = require('body-parser');
 const jwt = require('jsonwebtoken');
 
 const User = require("./models/User");
+const { default: dbConnect } = require('./db/db');
 
 const app = express();
 const port = 3000;
@@ -12,6 +13,9 @@ app.use(express.json());
 app.use(bodyParser.json());
 app.use(express.urlencoded({ extended: true }));
 
+// connecting with mongo db - syed
+// const DB_URL="mongodb+srv://syed_abdulrab:syedabdulrab@cluster0.nt7qb.mongodb.net/auth-service-cloud?retryWrites=true&w=majority"
+// dbConnect(DB_URL);
 
 // Secret key for JWT
 const secretKey = 'your-secret-key';
@@ -54,29 +58,31 @@ app.post('/login', async (req, res) => {
   }
 });
 
-// Protected route example
-app.get('/protected', authenticateToken, (req, res) => {
-  console.log(req.user);
-  res.json({ message: 'This is a protected route' });
-});
-
-// Middleware to authenticate JWT token
-function authenticateToken(req, res, next) {
-  const token = req.header('Authorization');
+const validateTokenMiddleware = (req, res, next) => {
+  const token = req.headers.authorization;
 
   if (!token) {
-    return res.status(401).json({ message: 'Unauthorized' });
+    return res.status(401).json({ message: 'Authorization header is missing' });
   }
 
-  jwt.verify(token, secretKey, (err, user) => {
+  jwt.verify(token, secretKey, (err, decoded) => {
     if (err) {
-      return res.status(403).json({ message: 'Forbidden' });
+      return res.status(401).json({ message: 'Invalid token' });
     }
 
-    req.user = user;
+    req.userId = decoded.userId;
     next();
   });
-}
+};
+
+app.get('/validate_token', validateTokenMiddleware, (req, res) => {
+  // If the middleware succeeds, the token is valid, and req.userId is available
+  res.json({ message: 'Token is valid', userId: req.userId });
+});
+
+
+
+
 
 app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);
