@@ -3,7 +3,6 @@ const bodyParser = require('body-parser');
 const jwt = require('jsonwebtoken');
 
 const User = require("./models/User");
-const { default: dbConnect } = require('./db/db');
 
 const app = express();
 const port = 3000;
@@ -102,8 +101,51 @@ app.get('/validate_token', validateTokenMiddleware, isTokenBlacklisted, (req, re
 
 
 
+app.post('/updateQuotas/:userId', async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    const { amount, type } = req.body;
+
+    // Fetch the user by ID
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Check if the update will exceed quotas
+    if ((user.bandwidthQuota + amount) > 25 || (user.storageQuota + amount) > 10) {
+      return res.status(400).json({ message: 'Storage quota exceeded' });
+    }
+
+    // Update quotas based on the type (upload or delete)
+    if (type === 'upload') {
+      user.bandwidthQuota += amount;
+      user.storageQuota += amount;
+    } else if (type === 'delete') {
+      user.bandwidthQuota -= amount;
+      user.storageQuota += amount;
+    } else {
+      return res.status(400).json({ message: 'Invalid operation type' });
+    }
+
+    // Save the updated user
+    await user.save();
+
+    res.status(200).json({ message: 'User quotas updated successfully' });
+  } catch (error) {
+    console.error('Error updating user quotas:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
+
+module.exports = router;
+
+
+
 
 
 app.listen(port, () => {
-  console.log(`Server is running on http://localhost:${port}`);
+  console.log(`AUTH SERVC Server is running on http://localhost:${port}`);
 });
