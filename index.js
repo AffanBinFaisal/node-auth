@@ -7,7 +7,8 @@ const User = require("./models/User");
 const { default: mongoose } = require("mongoose");
 
 const app = express();
-const port = 3003;
+// const port = 3003;
+const port = process.env.PORT || 8080;
 
 // Middleware to parse JSON in requests
 app.use(express.json());
@@ -144,27 +145,27 @@ app.post("/updateQuotas/:userId", async (req, res) => {
     }
 
     // Check if the update will exceed quotas
-    if (user.bandwidthQuota + amount / 100000 > 25) {
+    if (user.bandwidthQuota + amount / 1000000 > 25) {
       console.log("OHO BRO QUOTA EXCEED HOGAYA APKA TOH");
       return res.status(205).json({ message: "Bandwidth quota exceeded, chutti karo" });
     }
 
     // Update quotas based on the type (upload or delete)
     if (type === "upload") {
-      if (user.storageQuota + amount / 100000 > 10){
+      if (user.storageQuota + amount / 1000000 > 10){
         console.log("OHO BRO QUOTA EXCEED HOGAYA APKA TOH");
         return res.status(205).json({ message: "Storage quota exceeded, chutti karo" });
       }
-      user.bandwidthQuota += amount / 100000;
-      user.storageQuota += amount / 100000;
+      user.bandwidthQuota += amount / 1000000;
+      user.storageQuota += amount / 1000000;
     } else if (type === "delete") {
       console.log("DELETE OPERATION QUOTA CHECK FIRED");
-      user.bandwidthQuota += amount / 100000;
-      if (user.storageQuota - amount / 100000 <= 0) {
+      user.bandwidthQuota += amount / 1000000;
+      if (user.storageQuota - amount / 1000000 <= 0) {
         user.storageQuota = 0;
         console.log("easy scene do nothing as user storage at 0 for the day");
       } else {
-        user.storageQuota -= amount / 100000;
+        user.storageQuota -= amount / 1000000;
       }
     } else {
       return res.status(400).json({ message: "Invalid operation type" });
@@ -197,9 +198,11 @@ app.get(
   "/validate_token",
   validateTokenMiddleware,
   isTokenBlacklisted,
-  (req, res) => {
+  async (req, res) => {
     // If the middleware succeeds, the token is valid & IS NOT BLACKLISTED, and req.userId is available
-    res.json({ message: "Token is valid", userId: req.userId });
+    // Get the user
+    const user = await User.findById(req.userId);
+    res.json({ message: "Token is valid", userId: req.userId, user: user });
   }
 );
 
