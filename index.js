@@ -7,7 +7,6 @@ const User = require("./models/User");
 const { default: mongoose } = require("mongoose");
 
 const app = express();
-// const port = 3003;
 const port = process.env.PORT || 8080;
 
 // Middleware to parse JSON in requests
