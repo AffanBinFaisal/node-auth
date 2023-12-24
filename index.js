@@ -140,7 +140,7 @@ app.post('/updateQuotas/:userId', async (req, res) => {
     }
 
     // Check if the update will exceed quotas
-    if ((user.bandwidthQuota + amount/100000) > 25 || (user.storageQuota + amount/100000) > 1) {
+    if ((user.bandwidthQuota + amount/100000) > 25 || (user.storageQuota + amount/100000) > 10) {
       console.log("OHO BRO QUOTA EXCEED HOGAYA APKA TOH")
       return res.status(205).json({ message: 'quota exceeded, chutti karo' });
     }
