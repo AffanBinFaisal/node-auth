@@ -2,7 +2,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const jwt = require('jsonwebtoken');
 const cors = require('cors'); // Import the cors package
-
+const cron = require('node-cron'); // Import node-cron
 const User = require("./models/User");
 const { default: mongoose } = require('mongoose');
 
@@ -25,6 +25,18 @@ const db = mongoose.connection;
 db.on('error', console.error.bind(console, 'MongoDB connection error:'));
 db.once('open', () => {
   console.log('Connected to MongoDB');
+});
+
+// Schedule the cron job to run every 24 hours
+cron.schedule('43 13 * * *', async () => {
+  try {
+    console.log("ABOUT TO EXECUTE THE CRON JOB LETS GO")
+    // Reset bandwidthQuota and storageQuota for all users to 0
+    await User.updateMany({}, { $set: { bandwidthQuota: 0, storageQuota: 0 } });
+    console.log('Quotas reset for all users.');
+  } catch (error) {
+    console.error('Error resetting quotas:', error);
+  }
 });
 
 // Secret key for JWT
@@ -128,8 +140,9 @@ app.post('/updateQuotas/:userId', async (req, res) => {
     }
 
     // Check if the update will exceed quotas
-    if ((user.bandwidthQuota + amount/100000) > 25 || (user.storageQuota + amount/100000) > 10) {
-      return res.status(400).json({ message: 'quota exceeded, chutti karo' });
+    if ((user.bandwidthQuota + amount/100000) > 25 || (user.storageQuota + amount/100000) > 1) {
+      console.log("OHO BRO QUOTA EXCEED HOGAYA APKA TOH")
+      return res.status(205).json({ message: 'quota exceeded, chutti karo' });
     }
 
     // Update quotas based on the type (upload or delete)
@@ -149,7 +162,7 @@ app.post('/updateQuotas/:userId', async (req, res) => {
     res.status(200).json({ message: 'User quotas updated successfully' });
   } catch (error) {
     console.error('Error updating user quotas:', error);
-    res.status(500).json({ message: 'Internal server error' });
+    res.status(500).json({ message: 'Internal server error rola parh gaya hai bhai' });
   }
 });
 
