@@ -5,6 +5,7 @@ const cors = require("cors"); // Import the cors package
 const cron = require("node-cron"); // Import node-cron
 const User = require("./models/User");
 const { default: mongoose } = require("mongoose");
+require("dotenv").config();
 
 const app = express();
 const port = 3003;
